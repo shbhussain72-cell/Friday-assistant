@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friday</title>
+<link rel="icon" href="{{ICON}}">
+<meta name="theme-color" content="#ffffff">
+<style>
+/* Friday on the laptop: the phone app's look (Plus Jakarta Sans, its palette, her spark) grown into a desktop
+   app: a sidebar with Chat, Routines, Memory, Status and Settings, her days, a command palette (Ctrl+K). */
+@font-face { font-family: "Plus Jakarta Sans"; src: url("/panel_font.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
+:root {
+  --bg: #ffffff; --surface: #f0f4f9; --soft: #e9eef6; --line: #e3e7ed; --text: #1f1f1f; --muted: #5f6368;
+  --me: #f0f4f9; --mine: #1f1f1f; --mine-text: #ffffff; --accent: #0b57d0; --ok: #188038; --warn: #b06000; --bad: #d93025;
+  --side: #f7f9fc; --blue: #4f8cff; --violet: #b36bff; --pink: #ff6b8b; --glow: linear-gradient(90deg, var(--blue), var(--violet), var(--pink));
+  --shadow: 0 1px 2px rgba(31,31,31,.04), 0 10px 30px rgba(31,31,31,.08);
+}
+:root[data-theme="dark"] {
+  --bg: #131314; --surface: #1e1f20; --soft: #282a2c; --line: #2a2b2e; --text: #e3e3e3; --muted: #9aa0a6;
+  --me: #2f2f31; --mine: #e3e3e3; --mine-text: #131314; --accent: #8ab4f8; --ok: #6dd58c; --warn: #fdd663; --bad: #f28b82;
+  --side: #0f0f10; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.45);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--text); overflow: hidden;
+  font: 15px/1.4 "Plus Jakarta Sans", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; transition: background .25s, color .25s;
+}
+button { font: inherit; color: inherit; }
+button:focus { outline: none; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 1px; }
+a { color: var(--accent); }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------------------------------------------------------------- the shell */
+.shell { display: grid; grid-template-columns: 244px 1fr; height: 100%; transition: grid-template-columns .2s; }
+.shell.rail { grid-template-columns: 68px 1fr; }
+aside { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 14px 12px 12px; min-width: 0; overflow: hidden; }
+.who { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; }
+.who .spark { width: 24px; height: 24px; margin: 0; }
+.who b { font-weight: 600; font-size: 15px; }
+.state { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.state i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background .2s; }
+.state[data-s="listening"] i { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+.state[data-s="thinking"] i { background: var(--warn); }
+.state[data-s="speaking"] i { background: var(--accent); }
+.state[data-s="paused"] i, .state[data-s="off"] i { background: var(--muted); }
+.state[data-s="restarting"] i { background: var(--warn); animation: pulse2 1.2s ease-in-out infinite; }
+.state[data-s="error"] i { background: var(--bad); }
+.rail .who > div, .rail .label, .rail .days, .rail .chip-row span, .rail .sw span { display: none; }
+.newchat { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: var(--mine); color: var(--mine-text); border-radius: 999px; padding: 10px 14px; font-weight: 500; font-size: 14px; cursor: pointer; margin-bottom: 10px; transition: transform .1s; }
+.newchat:active { transform: scale(.98); }
+.rail .newchat { padding: 10px; justify-content: center; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+nav button { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; border-radius: 12px; padding: 9px 12px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; text-align: left; white-space: nowrap; }
+nav button:hover { background: var(--soft); color: var(--text); }
+nav button.on { background: var(--surface); color: var(--text); }
+nav button kbd { margin-left: auto; font: 11px "Plus Jakarta Sans", sans-serif; color: var(--muted); opacity: .7; }
+.rail nav button { justify-content: center; padding: 10px; }
+.rail nav button kbd { display: none; }
+.days { flex: 1; overflow-y: auto; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); min-height: 0; }
+.days h5 { margin: 0 0 6px 12px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.day { display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: 7px 12px; border-radius: 10px; cursor: pointer; font-size: 13px; color: var(--text); }
+.day:hover, .day.on { background: var(--soft); }
+.day small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-bottom { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 12px; border-radius: 12px; font-size: 13.5px; cursor: pointer; border: 0; background: transparent; width: 100%; }
+.sw:hover { background: var(--soft); }
+.rail .sw { justify-content: center; }
+.tg { width: 36px; height: 20px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .2s; }
+.tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.tg.on { background: var(--accent); } .tg.on::after { transform: translateX(16px); }
+.chip-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12.5px; color: var(--muted); }
+.chip-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+.chip-row i.on { background: var(--ok); } .chip-row i.lsd { background: var(--violet); }
+
+main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px 6px 20px; min-height: 52px; }
+.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.topbar .sub { font-size: 12.5px; color: var(--muted); margin-left: 4px; }
+.grow { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 999px; padding: 5px 12px 5px 8px; font-size: 12.5px; color: var(--text); max-width: 280px; }
+.pill .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill small { color: var(--muted); }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; border: 0; cursor: pointer; background: transparent; color: var(--muted); transition: background .15s, color .15s; }
+.icon-btn:hover { background: var(--soft); color: var(--text); }
+.icon-btn.on { color: var(--accent); }
+.page { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.page.on { display: flex; }
+.scroll { flex: 1; overflow-y: auto; padding: 6px 24px 24px; min-height: 0; }
+.wrap { max-width: 860px; margin: 0 auto; }
+
+/* ---------------------------------------------------------------- chat */
+#feed { flex: 1; overflow-y: auto; padding: 8px 24px 10px; scroll-behavior: smooth; position: relative;
+  mask-image: linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 14px), transparent); }
+.chat-inner { max-width: 820px; margin: 0 auto; }
+.empty { min-height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 0 6px; }
+.hi { font-weight: 600; font-size: 34px; line-height: 1.15; letter-spacing: -.02em; background: var(--glow); -webkit-background-clip: text; background-clip: text; color: transparent; width: max-content; max-width: 100%; }
+.ask { font-weight: 500; font-size: 22px; color: var(--muted); margin: 2px 0 26px; letter-spacing: -.01em; }
+.asks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.asks button { border: 0; background: var(--surface); color: var(--text); font-weight: 500; font-size: 14px; text-align: left; padding: 16px 14px; border-radius: 16px; cursor: pointer; transition: background .15s; display: flex; flex-direction: column; gap: 10px; }
+.asks button:hover { background: var(--soft); }
+.asks button small { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.tip { font-size: 12.5px; color: var(--muted); margin: 18px 4px 0; }
+.tip kbd { font: 11.5px "Plus Jakarta Sans", sans-serif; background: var(--surface); padding: 2px 6px; border-radius: 6px; }
+.row { display: flex; align-items: flex-start; padding: 10px 0; animation: rise .22s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+.row.you { justify-content: flex-end; padding: 8px 0 8px 60px; }
+.you .bubble { background: var(--me); color: var(--text); padding: 11px 16px; border-radius: 22px 6px 22px 22px; max-width: 80%; white-space: pre-wrap; word-wrap: break-word; line-height: 1.3; }
+.spark { width: 20px; height: 20px; flex: none; margin: 2px 12px 0 0; }
+.spark.spin { animation: spin 2.4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.friday .text { flex: 1; white-space: pre-wrap; word-wrap: break-word; min-width: 0; font-size: 15.5px; }
+.stamp { text-align: center; font-size: 11.5px; color: var(--muted); padding: 14px 0 4px; }
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11.5px; padding: 16px 0 6px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 6px; justify-content: flex-end; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--text); }
+.chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; font-size: 15px; line-height: 1; }
+.typing { display: flex; align-items: center; padding: 10px 0; }
+.shimmer { width: 150px; height: 9px; border-radius: 999px; background: linear-gradient(90deg, var(--soft) 0%, var(--blue) 40%, var(--violet) 60%, var(--soft) 100%); background-size: 300% 100%; animation: shimmer 1.5s linear infinite; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.live { display: flex; align-items: center; gap: 10px; justify-content: flex-end; padding: 8px 0; color: var(--muted); font-size: 13.5px; }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 18%, transparent); } }
+.card { background: var(--surface); border-radius: 16px; padding: 14px 16px; margin: 8px 0 8px 32px; animation: rise .22s ease-out; }
+.card h4 { margin: 0 0 10px; font-weight: 600; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.task { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+.task:first-of-type { border-top: 0; }
+.task .n { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: var(--bg); color: var(--muted); }
+.task[data-s="running"] .n { color: var(--accent); animation: pulse2 1.2s ease-in-out infinite; }
+.task[data-s="done"] .n { background: var(--ok); color: #fff; }
+.task[data-s="needs you"] .n { background: var(--warn); color: #fff; }
+.task[data-s="skipped"] .t { color: var(--muted); text-decoration: line-through; }
+.task .s { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+@keyframes pulse2 { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); } }
+.confirm p { margin: 0 0 12px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 0; background: var(--bg); color: var(--text); padding: 9px 16px; border-radius: 999px; cursor: pointer; font-weight: 500; font-size: 14px; }
+.btn.primary { background: var(--mine); color: var(--mine-text); }
+.btn.soft { background: var(--surface); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+.doc { white-space: normal; max-height: 340px; overflow: auto; font-size: 14.5px; }
+.doc pre { background: var(--bg); padding: 10px; border-radius: 10px; overflow: auto; font-size: 12.5px; }
+.doc code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+.doc h3 { font-size: 14.5px; margin: 12px 0 6px; } .doc ul, .doc ol { padding-left: 20px; margin: 6px 0; } .doc p { margin: 6px 0; }
+.jump { position: sticky; bottom: 10px; margin: 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--text); display: none; place-items: center; cursor: pointer; box-shadow: var(--shadow); font-weight: 500; font-size: 17px; }
+.jump.show { display: grid; }
+.dayview { padding: 8px 0; }
+.dayview .digest { background: var(--surface); border-radius: 16px; padding: 14px 16px; margin: 8px 0 14px; font-size: 14.5px; }
+.dayview .back { margin-bottom: 10px; }
+.hline { display: flex; gap: 12px; padding: 6px 0; font-size: 14px; }
+.hline time { color: var(--muted); font-size: 12px; width: 42px; flex: none; padding-top: 2px; }
+.hline b { font-weight: 500; flex: none; width: 54px; color: var(--muted); }
+.hline.he b { color: var(--accent); }
+
+footer { padding: 4px 24px 12px; }
+.composer { position: relative; background: var(--surface); border-radius: 28px; padding: 6px; max-width: 820px; margin: 0 auto; }
+.composer::before { content: ""; position: absolute; inset: -1.5px; border-radius: 30px; background: var(--glow); opacity: 0; transition: opacity .25s; z-index: -1; }
+.composer:focus-within::before, .busy .composer::before { opacity: .55; }
+.composer.drop::before { opacity: 1; }
+.chips.attached { justify-content: flex-start; margin: 2px 0 0 8px; }
+.tools { display: flex; align-items: flex-end; gap: 2px; }
+.plus { width: 42px; height: 42px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-weight: 300; font-size: 26px; line-height: 1; cursor: pointer; flex: none; }
+.plus:hover { background: var(--soft); }
+textarea.in { flex: 1; border: 0; outline: 0; resize: none; background: transparent; color: var(--text); min-width: 0; font: inherit; font-size: 16px; line-height: 1.3; max-height: 160px; min-height: 42px; padding: 11px 4px 10px; }
+textarea.in::placeholder { color: var(--muted); }
+.send { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; flex: none; background: var(--mine); color: var(--mine-text); transition: transform .1s, background .15s, color .15s; }
+.send:active { transform: scale(.94); }
+.send.mic { background: transparent; color: var(--muted); } .send.mic:hover { background: var(--soft); color: var(--text); }
+.send.stop { background: var(--bad); color: #fff; }
+.send svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hint { font-size: 11.5px; color: var(--muted); text-align: center; padding: 8px 0 0; }
+.slash { position: absolute; left: 12px; bottom: calc(100% + 8px); background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 6px; display: none; min-width: 300px; z-index: 5; }
+.slash.show { display: block; }
+.slash button { display: flex; gap: 10px; align-items: baseline; width: 100%; border: 0; background: transparent; padding: 8px 10px; border-radius: 10px; text-align: left; cursor: pointer; font-size: 13.5px; }
+.slash button.on, .slash button:hover { background: var(--surface); }
+.slash b { font-weight: 600; min-width: 90px; } .slash small { color: var(--muted); }
+
+/* ---------------------------------------------------------------- pages */
+.sec { margin: 16px 0 8px 4px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.sec .grow { flex: 1; }
+/* settings: each section is a button that opens its settings (one open at a time) */
+.acc { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface); color: var(--text); border: 0; border-radius: 16px; padding: 14px 18px; margin: 8px 0 0; cursor: pointer; font: inherit; }
+.acc b { font-weight: 600; font-size: 15px; } .acc small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.acc div { flex: 1; } .acc .chev { font-size: 22px; color: var(--muted); transition: transform .2s; }
+.acc.open { border-radius: 16px 16px 0 0; } .acc.open .chev { transform: rotate(90deg); }
+.acc.open + .panel { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.panel { background: var(--surface); border-radius: 16px; padding: 6px 16px; }
+.panel .note { font-size: 13px; color: var(--muted); padding: 8px 0 10px; }
+.item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.item:first-child, .panel .note + .item { border-top: 0; }
+.item .t { flex: 1; min-width: 0; cursor: pointer; }
+.item .t b { font-weight: 500; display: block; font-size: 15px; }
+.item .t span { display: block; font-size: 12.5px; color: var(--accent); margin-top: 1px; }
+.item .t small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+.item .x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 6px; border-radius: 8px; }
+.item .x:hover { background: var(--bg); color: var(--bad); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border-radius: 16px; padding: 14px 16px; min-height: 96px; display: flex; flex-direction: column; gap: 6px; }
+.tile h4 { margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.tile .v { font-size: 20px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+.tile .v i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+.tile .v i.ok { background: var(--ok); } .tile .v i.warn { background: var(--warn); } .tile .v i.bad { background: var(--bad); }
+.tile small { color: var(--muted); font-size: 12.5px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 4px; }
+.mini { background: var(--bg); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mini b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini b.warn { color: var(--warn); }
+.mini small { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.wide { grid-column: 1 / -1; min-height: 0; }
+.form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; padding: 10px 0 12px; }
+.form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.form label.full, .form .full { grid-column: 1 / -1; }
+.form input, .form select, .form textarea, .modal input, .modal select, .modal textarea { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; }
+.form textarea, .modal textarea { min-height: 120px; resize: vertical; font-family: "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.form .tgrow, .modal .tgrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--text); padding: 6px 0; cursor: pointer; }
+.form .tgrow small, .modal .tgrow small { display: block; color: var(--muted); font-size: 12.5px; }
+.banner { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); color: var(--text); border-radius: 14px; padding: 10px 14px; font-size: 13.5px; display: none; align-items: center; gap: 12px; margin: 8px 0; }
+.banner.show { display: flex; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--mine); color: var(--mine-text); padding: 10px 16px; border-radius: 999px; font-size: 13.5px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 20; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.search { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 999px; padding: 6px 14px; }
+.search input { flex: 1; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--text); outline: 0; }
+.cols { display: grid; grid-template-columns: 280px 1fr; gap: 14px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } .asks { grid-template-columns: 1fr 1fr; } }
+.editor { background: var(--surface); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 320px; }
+.editor textarea { flex: 1; min-height: 300px; }
+.editor .head { display: flex; align-items: center; gap: 10px; }
+.editor .head b { font-weight: 600; flex: 1; }
+
+/* ---------------------------------------------------------------- overlays */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; place-items: center; z-index: 10; backdrop-filter: blur(2px); }
+.modal-bg.show { display: grid; }
+.modal { background: var(--bg); border-radius: 20px; padding: 20px 22px; width: min(520px, 92vw); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; animation: rise .18s ease-out; }
+.modal h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+.modal label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.modal .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal .btns { justify-content: flex-end; margin-top: 6px; }
+.pal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.25); display: none; justify-content: center; align-items: flex-start; padding-top: 12vh; z-index: 15; }
+.pal-bg.show { display: flex; }
+.pal { width: min(560px, 92vw); background: var(--bg); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; animation: rise .15s ease-out; }
+.pal input { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; font-size: 16px; padding: 14px 18px; color: var(--text); outline: 0; }
+.pal .list { max-height: 360px; overflow-y: auto; padding: 6px; }
+.pal .list button { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; padding: 10px 12px; border-radius: 12px; text-align: left; cursor: pointer; font-size: 14px; }
+.pal .list button.on, .pal .list button:hover { background: var(--surface); }
+.pal .list button small { margin-left: auto; color: var(--muted); font-size: 12px; }
+.pal .list .grp { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 10px 12px 4px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <aside>
+    <div class="who"><svg class="spark" viewBox="0 0 24 24"><path fill="url(#g)" d="M12 1.5C12.6 7.3 16.7 11.4 22.5 12 16.7 12.6 12.6 16.7 12 22.5 11.4 16.7 7.3 12.6 1.5 12 7.3 11.4 11.4 7.3 12 1.5z"/></svg>
+      <div><b>Friday</b><div class="state" id="state" data-s="idle"><i></i><span id="stateText">Ready</span></div></div></div>
+    <button class="newchat" id="newChat" title="New chat (Ctrl+N)"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="label">New chat</span></button>
+    <nav id="nav">
+      <button data-page="chat"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg><span class="label">Chat</span><kbd>Ctrl 1</kbd></button>
+      <button data-page="routines"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="label">Routines</span><kbd>Ctrl 2</kbd></button>
+      <button data-page="memory"><svg class="i" viewBox="0 0 24 24"><path d="M9 3a4 4 0 0 0-4 4v1a3 3 0 0 0 0 6v1a4 4 0 0 0 4 4h1V3zM15 3a4 4 0 0 1 4 4v1a3 3 0 0 1 0 6v1a4 4 0 0 1-4 4h-1V3z"/></svg><span class="label">Memory</span><kbd>Ctrl 3</kbd></button>
+      <button data-page="status"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="label">Status</span><kbd>Ctrl 4</kbd></button>
+      <button data-page="settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="label">Settings</span><kbd>Ctrl 5</kbd></button>
+    </nav>
+    <div class="days" id="days"><h5>Days</h5></div>
+    <div class="side-bottom">
+      <button class="sw" id="swOn"><span class="label">Friday on</span><span class="tg on" id="tgOn"></span></button>
+      <button class="sw" id="swVoice"><span class="label">Speak replies</span><span class="tg" id="tgVoice"></span></button>
+      <button class="sw" id="swOffice" title="No sound: replies on screen, reminders on your phone"><span class="label">Office mode</span><span class="tg" id="tgOffice"></span></button>
+      <div class="chip-row" id="phoneChip"><i></i><span>Phone away</span></div>
+      <div class="chip-row" id="lsdChip" style="display:none"><i class="lsd"></i><span>Lisan ud-Dawat</span></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="topbar">
+      <button class="icon-btn" id="railBtn" title="Sidebar (Ctrl+B)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+      <h1 id="title">Chat</h1><span class="sub" id="sub"></span>
+      <div class="grow"></div>
+      <div id="working" style="display:flex;gap:6px"></div>
+      <button class="icon-btn" id="palBtn" title="Command palette (Ctrl+K)"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="icon-btn" id="themeBtn" title="Theme"><svg class="i" viewBox="0 0 24 24"></svg></button>
+    </div>
+
+    <!-- Chat -->
+    <section class="page on" id="page-chat">
+      <div id="feed"><div class="chat-inner" id="chatInner">
+        <div class="empty" id="empty">
+          <div class="hi" id="hi">Hey, sir</div>
+          <div class="ask">What can I take off your plate?</div>
+          <div class="asks">
+            <button data-ask="Give me a quick briefing: my calendar today, any new messages, and the weather."><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>Brief me<small>Calendar, messages, weather</small></button>
+            <button data-ask="Read me my new messages."><svg class="i" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg>My messages<small>WhatsApp, unread</small></button>
+            <button data-ask="What's on my screen?"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/></svg>What's on my screen<small>She looks and explains</small></button>
+            <button data-ask="Start a background job: "><svg class="i" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Background job<small>Claude Code does it while you work</small></button>
+          </div>
+          <div class="tip">Say "Friday" any time. Type <kbd>/</kbd> for quick commands, <kbd>Ctrl K</kbd> for everything. A numbered list gets done one by one. Drop a file here to ask about it.</div>
+        </div>
+        <button class="jump" id="jump" aria-label="Newest">↓</button>
+      </div></div>
+      <footer>
+        <div class="composer" id="composer">
+          <div class="slash" id="slash"></div>
+          <div class="chips attached" id="attached"></div>
+          <div class="tools">
+            <button class="plus" id="attachBtn" aria-label="Attach files" title="Attach files">+</button>
+            <textarea class="in" id="input" aria-label="Ask Friday" rows="1" placeholder="Ask Friday, or / for a quick command"></textarea>
+            <button class="send mic" id="sendBtn" aria-label="Talk" title="Talk (Ctrl+Alt+K)"><svg viewBox="0 0 24 24" id="sendIcon"></svg></button>
+          </div>
+        </div>
+        <div class="hint">Enter to send · Shift+Enter for a new line · Ctrl+Alt+F opens this window · Ctrl+Alt+K talk · Ctrl+Alt+J Friday off/on</div>
+      </footer>
+    </section>
+
+    <!-- Routines -->
+    <section class="page" id="page-routines"><div class="scroll"><div class="wrap" id="routinesBody"></div></div></section>
+    <!-- Memory -->
+    <section class="page" id="page-memory"><div class="scroll"><div class="wrap" id="memoryBody"></div></div></section>
+    <!-- Status -->
+    <section class="page" id="page-status"><div class="scroll"><div class="wrap" id="statusBody"></div></div></section>
+    <!-- Settings -->
+    <section class="page" id="page-settings"><div class="scroll"><div class="wrap" id="settingsBody"></div></div></section>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="pal-bg" id="palBg"><div class="pal"><input id="palIn" placeholder="Jump to a page, run something, or just ask Friday…"><div class="list" id="palList"></div></div></div>
+<div class="toast" id="toast"></div>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset=".5" stop-color="#b36bff"/><stop offset="1" stop-color="#ff6b8b"/></linearGradient></defs></svg>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const KEY = "{{KEY}}";
+async function call(path, body) {
+  const r = await fetch(path, {method: body === undefined ? "GET" : "POST", headers: {"X-Friday-Token": KEY, "Content-Type": "application/json"},
+                               body: body === undefined ? undefined : JSON.stringify(body)});
+  return r.json();
+}
+async function upload(file) {
+  const r = await fetch("/upload", {method: "POST", headers: {"X-Friday-Token": KEY, "X-Name": encodeURIComponent(file.name)}, body: file});
+  return (await r.json()).path;
+}
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const rich = s => esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+const el = html => { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; };
+const SPARK = '<svg class="spark" viewBox="0 0 24 24"><path fill="url(#g)" d="M12 1.5C12.6 7.3 16.7 11.4 22.5 12 16.7 12.6 12.6 16.7 12 22.5 11.4 16.7 7.3 12.6 1.5 12 7.3 11.4 11.4 7.3 12 1.5z"/></svg>';
+let toastT; function toast(t) { const n = $("#toast"); n.textContent = t; n.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => n.classList.remove("show"), 2600); }
+function nice(iso) { try { const d = new Date(iso); return d.toLocaleDateString([], {weekday: "short", day: "numeric", month: "short"}) + ", " + d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}).toLowerCase(); } catch (e) { return iso; } }
+function clock(iso) { try { return new Date(iso).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}).toLowerCase(); } catch (e) { return iso; } }
+
+/* ---------------------------------------------------------------- theme + sidebar */
+const sys = matchMedia("(prefers-color-scheme: dark)");
+const TICONS = {auto: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/>',
+  light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  dark: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'};
+let mode = "auto"; try { mode = localStorage.getItem("themeMode") || "auto"; } catch (e) {}
+function applyTheme() {
+  const t = mode === "auto" ? (sys.matches ? "dark" : "light") : mode;
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#131314" : "#ffffff";
+  $("#themeBtn svg").innerHTML = TICONS[mode];
+  $("#themeBtn").title = {auto: "Theme: follows Windows", light: "Theme: light", dark: "Theme: dark"}[mode];
+}
+sys.addEventListener("change", applyTheme);
+$("#themeBtn").onclick = () => { mode = {auto: "light", light: "dark", dark: "auto"}[mode]; try { localStorage.setItem("themeMode", mode); } catch (e) {} applyTheme(); };
+applyTheme();
+try { if (localStorage.getItem("rail") === "1") $("#shell").classList.add("rail"); } catch (e) {}
+$("#railBtn").onclick = () => { const r = $("#shell").classList.toggle("rail"); try { localStorage.setItem("rail", r ? "1" : "0"); } catch (e) {} };
+
+/* ---------------------------------------------------------------- pages */
+const TITLES = {chat: ["Chat", ""], routines: ["Routines", "Reminders and the things she does on her own"], memory: ["Memory", "What she remembers and what you taught her"],
+  status: ["Status", "Everything running, live"], settings: ["Settings", "Names, hearing, voice, brain, messages"]};
+let page = "chat";
+function show(p) {
+  if (page === "routines" && p !== "routines" && remCount()) return confirmLeave(() => { remStage.changes = {}; remStage.deletes.clear(); remStage.adds = []; show(p); });
+  page = p;
+
+  $$(".page").forEach(s => s.classList.toggle("on", s.id === "page-" + p));
+  $$("#nav button").forEach(b => b.classList.toggle("on", b.dataset.page === p));
+  $("#title").textContent = TITLES[p][0]; $("#sub").textContent = TITLES[p][1];
+  $("#days").style.display = p === "chat" ? "" : "none";
+  try { localStorage.setItem("page", p); } catch (e) {}
+  if (p === "routines") loadRoutines(); if (p === "memory") loadMemory(); if (p === "status") loadStatus(); if (p === "settings") loadSettings();
+  if (p === "chat") setTimeout(() => $("#input").focus(), 50);
+}
+$$("#nav button").forEach(b => b.onclick = () => show(b.dataset.page));
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+    const n = {"1": "chat", "2": "routines", "3": "memory", "4": "status", "5": "settings"}[e.key];
+    if (n) { e.preventDefault(); show(n); }
+    if (e.key === "k" || e.key === "K") { e.preventDefault(); openPal(); }
+    if (e.key === "b" || e.key === "B") { e.preventDefault(); $("#railBtn").click(); }
+    if (e.key === "n" || e.key === "N") { e.preventDefault(); newChat(); }
+  }
+  if (e.key === "Escape") { closePal(); closeModal(); $("#slash").classList.remove("show"); }
+});
+
+/* ---------------------------------------------------------------- chat */
+const feed = $("#feed"), inner = $("#chatInner"), input = $("#input"), sendBtn = $("#sendBtn");
+let last = 0, files = [], busy = false, confirms = {}, taskCard = null, lastStamp = 0, typing = null, live = null, lastFriday = null;
+const ICON = {mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  send: '<path d="M12 19V5M5 12l7-7 7 7"/>', stop: '<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>'};
+(() => { const h = new Date().getHours(); $("#hi").textContent = h < 5 ? "Up late, sir" : h < 12 ? "Morning, sir" : h < 17 ? "Hey, sir" : "Evening, sir"; })();
+function md(s) {
+  const blocks = String(s).split(/```/);
+  return blocks.map((b, i) => {
+    if (i % 2) return "<pre><code>" + esc(b.replace(/^\w*\n/, "")) + "</code></pre>";
+    let h = esc(b).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    h = h.replace(/^#{1,3} (.*)$/gm, "<h3>$1</h3>");
+    h = h.replace(/(?:^[-*] .*(?:\n|$))+/gm, m => "<ul>" + m.trim().split("\n").map(l => "<li>" + l.slice(2) + "</li>").join("") + "</ul>");
+    h = h.replace(/(?:^\d+[.)] .*(?:\n|$))+/gm, m => "<ol>" + m.trim().split("\n").map(l => "<li>" + l.replace(/^\d+[.)] /, "") + "</li>").join("") + "</ol>");
+    return h.split(/\n{2,}/).map(p => /^<(ul|ol|h3|pre)/.test(p) ? p : "<p>" + p.replace(/\n/g, "<br>") + "</p>").join("");
+  }).join("");
+}
+const atBottom = () => feed.scrollHeight - feed.scrollTop - feed.clientHeight < 120;
+function scrollDown() { feed.scrollTop = feed.scrollHeight; }
+feed.addEventListener("scroll", () => $("#jump").classList.toggle("show", !atBottom()));
+$("#jump").onclick = scrollDown;
+function add(node, follow) {
+  $("#empty") && $("#empty").remove(); $("#dayview") && leaveDay(false);
+  const near = follow || atBottom();
+  inner.insertBefore(node, $("#jump"));
+  if (near) scrollDown();
+}
+function stamp() {
+  const now = Date.now(), d = new Date(now), ld = lastStamp ? new Date(lastStamp) : null;
+  const c = d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}).toLowerCase();
+  let label = null;
+  if (!ld || ld.toDateString() !== d.toDateString()) label = "Today · " + c; else if (now - lastStamp > 10 * 60000) label = c;
+  if (label) add(el(`<div class="stamp">${label}</div>`));
+  lastStamp = now;
+}
+function hideTyping() { if (typing) { typing.remove(); typing = null; } }
+function showTyping() { if (typing) return; hideLive(); typing = el(`<div class="typing">${SPARK.replace('class="spark"', 'class="spark spin"')}<div class="shimmer"></div></div>`); add(typing, true); }
+function hideLive() { if (live) { live.remove(); live = null; } }
+function showLive() { if (live) return; hideTyping(); live = el(`<div class="live"><span>Listening…</span><span class="dot"></span></div>`); add(live, true); }
+function line(e) {
+  const who = e.who === "you" ? "you" : "friday";
+  if (who === "you") hideLive(); else hideTyping();
+  if (who === "friday" && lastFriday && lastFriday.node.isConnected && Date.now() - lastFriday.at < 6000) {
+    lastFriday.node.querySelector(".text").innerHTML += " " + rich(e.text); lastFriday.at = Date.now();
+    if (atBottom()) scrollDown(); return;
+  }
+  stamp();
+  const chips = (e.files || []).map(f => `<span class="chip">📎 ${esc(f)}</span>`).join("");
+  const node = who === "you"
+    ? el(`<div><div class="row you"><div class="bubble">${esc(e.text || "")}</div></div>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`)
+    : el(`<div class="row friday">${SPARK}<div class="text">${rich(e.text || "")}</div></div>`);
+  add(node, who === "you");
+  lastFriday = who === "friday" ? {node, at: Date.now()} : null;
+}
+function tasks(e) {
+  const label = {waiting: "", running: "Working…", done: "Done", "needs you": "Needs you", stopped: "Stopped", skipped: "Skipped"};
+  const node = el(`<div class="card"><h4>Tasks</h4>${e.items.map((t, i) =>
+    `<div class="task" data-s="${t.state}"><span class="n">${t.state === "done" ? "✓" : i + 1}</span><span class="t">${esc(t.text)}</span><span class="s">${label[t.state] || ""}</span></div>`).join("")}</div>`);
+  if (taskCard && taskCard.isConnected) taskCard.replaceWith(node); else add(node);
+  taskCard = node;
+}
+function confirmCard(e) {
+  hideTyping();
+  const node = el(`<div class="card confirm"><h4>Check</h4><p>${esc(e.text)}</p><div class="btns"><button class="btn primary">Yes, go ahead</button><button class="btn">No</button></div></div>`);
+  const [yes, no] = node.querySelectorAll("button");
+  const answer = v => { yes.disabled = no.disabled = true; (v ? yes : no).textContent = v ? "Approved" : "Cancelled"; call("/answer", {id: e.id, yes: v}); };
+  yes.onclick = () => answer(true); no.onclick = () => answer(false);
+  confirms[e.id] = node; add(node, true);
+}
+function doc(e) { hideTyping(); add(el(`<div class="card"><h4>${esc(e.file || "Answer")}</h4><div class="doc">${md(e.text)}</div></div>`)); }
+const STATES = {idle: "Ready", listening: "Listening", thinking: "Thinking", speaking: "Speaking", paused: "Off · Ctrl+Alt+J", restarting: "Restarting…", error: "Something went wrong", off: "Not running"};
+function state(s) {
+  $("#state").dataset.s = s; $("#stateText").textContent = STATES[s] || s;
+  if (s === "listening") showLive(); else hideLive();
+  if (s === "thinking") showTyping(); else if (s !== "listening") hideTyping();
+  busy = s === "thinking" || s === "speaking"; $("#main").classList.toggle("busy", busy); refresh();
+}
+function handle(e) {
+  if (["tasks", "confirm", "doc", "divider"].includes(e.type)) lastFriday = null;
+  if (e.type === "line") line(e);
+  else if (e.type === "tasks") tasks(e);
+  else if (e.type === "confirm") confirmCard(e);
+  else if (e.type === "answered" && confirms[e.id]) confirms[e.id].querySelectorAll("button").forEach(b => b.disabled = true);
+  else if (e.type === "doc") doc(e);
+  else if (e.type === "divider") { add(el(`<div class="divider">${esc(e.text || "New chat")} · ${e.t || ""}</div>`), true); lastStamp = 0; }
+  else if (e.type === "state") state(e.state);
+  else if (e.type === "office") $("#tgOffice").classList.toggle("on", !!e.on);
+  else if (e.type === "suggest") suggestCard(e);
+  else if (e.type === "idle" || e.type === "stopped") state("idle");
+}
+async function poll() {
+  while (true) {
+    try {
+      const r = await call("/events?after=" + last);
+      if (r && r.boot) {
+        if (boot && r.boot !== boot) {  // a new run: reload, so the window runs her newest page and starts her feed afresh
+          try { sessionStorage.setItem("justRestarted", "1"); } catch (e) {}
+          location.reload(); return;
+        }
+        if (!boot) earlierToday(r.boot);
+        boot = r.boot;  // same run: a blip, not a restart
+      }
+      downSince = 0;
+      if (r && r.events) r.events.forEach(e => { if (e.n > last) { last = e.n; handle(e); } });
+      if (r && "voice" in r) $("#tgVoice").classList.toggle("on", !!r.voice);
+      if (r && "office" in r) {  // every update carries the real state, so a switch can never show the wrong one
+        $("#tgOffice").classList.toggle("on", !!r.office);
+        const row = document.querySelector("#officeRow .tg"); if (row) row.classList.toggle("on", !!r.office);
+      }
+      if (r && "paused" in r) { $("#tgOn").classList.toggle("on", !r.paused); if (r.paused && $("#state").dataset.s === "idle") state("paused"); }
+    } catch (err) {
+      if (!downSince) downSince = Date.now(); else if (Date.now() - downSince > 3000) restarting();  // she's gone: restarting
+      await new Promise(res => setTimeout(res, 1500));
+    }
+  }
+}
+function refresh() {
+  const text = input.value.trim(), can = text || files.length;
+  const kind = can ? "send" : busy ? "stop" : "mic";
+  sendBtn.className = "send " + (kind === "send" ? "" : kind);
+  $("#sendIcon").innerHTML = ICON[kind];
+  sendBtn.title = {mic: "Talk (Ctrl+Alt+K)", send: "Send", stop: "Stop"}[kind];
+  input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  slashMenu();
+}
+function renderFiles() {
+  $("#attached").innerHTML = files.map((f, i) => `<span class="chip">${f.startsWith("uploading:") ? "⏳ " + esc(f.slice(10)) : "📎 " + esc(f.split(/[\\/]/).pop().replace(/^[0-9a-f]{8}_/, ""))}<button data-i="${i}">×</button></span>`).join("");
+  $("#attached").querySelectorAll("button").forEach(b => b.onclick = () => { files.splice(+b.dataset.i, 1); renderFiles(); refresh(); });
+}
+/* quick commands: "/" in the composer */
+const SLASH = [
+  ["/remind", "Remind me…", "remind me to call Sara at 5", t => ask("Remind me " + t)],
+  ["/note", "Take a note", "note: the printer needs a new black cartridge", t => ask("Take a note: " + t)],
+  ["/remember", "Remember a fact", "remember that Ali's office is on the 3rd floor", async t => { await call("/memory", {kind: "fact", text: t}); toast("Remembered."); }],
+  ["/job", "Background job", "job: find the cheapest flight to Dubai next Friday", t => ask("Start a background job: " + t)],
+  ["/phone", "On my phone…", "phone: book a Rapido to the office", t => ask("On my phone, " + t)],
+  ["/lsd", "Talk in Lisan ud-Dawat", "", async () => { await call("/settings", {language: "lsd"}); toast("Lisan ud-Dawat mode on."); loadStatusQuiet(); }],
+  ["/english", "Back to English", "", async () => { await call("/settings", {language: "en"}); toast("English."); loadStatusQuiet(); }],
+  ["/new", "New chat", "", () => newChat()],
+  ["/stop", "Stop what she's doing", "", () => call("/stop", {})],
+];
+let slashIdx = 0;
+function slashMenu() {
+  const v = input.value, m = v.match(/^\/(\w*)$/);
+  const box = $("#slash");
+  if (!m) { box.classList.remove("show"); return; }
+  const hits = SLASH.filter(s => s[0].startsWith("/" + m[1]));
+  if (!hits.length) { box.classList.remove("show"); return; }
+  slashIdx = Math.min(slashIdx, hits.length - 1);
+  box.innerHTML = hits.map((s, i) => `<button class="${i === slashIdx ? "on" : ""}" data-c="${s[0]}"><b>${s[0]}</b>${s[1]}<small>${esc(s[2])}</small></button>`).join("");
+  box.querySelectorAll("button").forEach(b => b.onclick = () => pickSlash(b.dataset.c));
+  box.classList.add("show");
+}
+function pickSlash(c) { const s = SLASH.find(x => x[0] === c); $("#slash").classList.remove("show"); if (!s[2]) { input.value = ""; refresh(); s[3](""); } else { input.value = c + " "; refresh(); input.focus(); } }
+function suggestCard(e) {
+  // replies he might send, in his style: a click puts one in the composer to edit or send as it is
+  const card = el(`<div class="stamp" style="text-align:left;margin:4px 0 10px 34px"><div style="margin-bottom:6px">Reply to ${esc(e.who)}?</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${(e.items || []).map((t, i) => `<button class="chip" data-i="${i}" style="border:0;cursor:pointer;text-align:left">${esc(t)}</button>`).join("")}</div></div>`);
+  card.querySelectorAll("button").forEach(b => b.onclick = () => {
+    input.value = `Reply to ${e.who} on ${e.app || "WhatsApp"}: ${e.items[+b.dataset.i]}`;
+    refresh(); show("chat"); input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+  });
+  add(card);
+}
+async function ask(text) {
+ input.value = ""; files = []; renderFiles(); refresh(); show("chat"); await call("/type", {text, files: []}); }
+async function send() {
+  const text = input.value.trim();
+  if (!text && !files.length) { if (busy) call("/stop", {}); else call("/listen", {}); return; }
+  if (files.some(f => f.startsWith("uploading:"))) return;
+  const m = text.match(/^(\/\w+)\s*(.*)$/s);
+  if (m && !files.length) { const s = SLASH.find(x => x[0] === m[1]); if (s) { input.value = ""; refresh(); s[3](m[2]); return; } }
+  await call("/type", {text, files});
+  input.value = ""; files = []; renderFiles(); refresh();
+}
+input.addEventListener("input", refresh);
+input.addEventListener("keydown", e => {
+  const box = $("#slash");
+  if (box.classList.contains("show")) {
+    const n = box.querySelectorAll("button").length;
+    if (e.key === "ArrowDown") { e.preventDefault(); slashIdx = (slashIdx + 1) % n; slashMenu(); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); slashIdx = (slashIdx - 1 + n) % n; slashMenu(); return; }
+    if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); pickSlash(box.querySelector("button.on").dataset.c); return; }
+  }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+sendBtn.onclick = send;
+const picker = Object.assign(document.createElement("input"), {type: "file", multiple: true});
+async function addFiles(list) {
+  for (const f of list) { const tag = "uploading:" + f.name; files.push(tag); renderFiles(); const path = await upload(f); files[files.indexOf(tag)] = path; renderFiles(); refresh(); }
+  show("chat"); input.focus();
+}
+picker.onchange = () => { addFiles([...picker.files]); picker.value = ""; };
+$("#attachBtn").onclick = () => picker.click();
+$$(".asks button").forEach(b => b.onclick = () => { if (b.dataset.ask.endsWith(": ")) { input.value = b.dataset.ask; refresh(); input.focus(); } else ask(b.dataset.ask); });
+const comp = $("#composer");
+["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); comp.classList.add("drop"); }));
+["dragleave", "drop"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); comp.classList.remove("drop"); }));
+document.addEventListener("drop", e => { if (e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]); });
+async function newChat() {
+  await call("/chat/new", {});
+  $$("#chatInner > *:not(#jump)").forEach(n => n.remove()); lastFriday = null; lastStamp = 0; taskCard = null;
+  inner.insertBefore(el(`<div class="divider">New chat · ${new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}).toLowerCase()}</div>`), $("#jump"));
+  show("chat"); toast("Fresh start. She still remembers what matters.");
+}
+$("#newChat").onclick = newChat;
+$("#swOn").onclick = async () => { const r = await call("/pause", {on: !$("#tgOn").classList.contains("on")}); $("#tgOn").classList.toggle("on", !r.paused); toast(r.paused ? "Friday is off. Reminders still ring." : "Friday is on."); };
+$("#swVoice").onclick = async () => { const on = !$("#tgVoice").classList.contains("on"); $("#tgVoice").classList.toggle("on", on); call("/voice", {on}); };
+async function setOffice(on) { const r = await call("/office", {on, from: "window"}); $("#tgOffice").classList.toggle("on", !!r.on); toast(r.on ? "Office mode on: no sound, reminders go to your phone." : "Office mode off."); }
+$("#swOffice").onclick = () => setOffice(!$("#tgOffice").classList.contains("on"));
+
+/* her days: the sidebar list, a day's transcript in the chat area */
+async function loadDays() {
+  try {
+    const r = await call("/history");
+    const box = $("#days"); box.innerHTML = "<h5>Days</h5>";
+    const today = new Date().toISOString().slice(0, 10);
+    box.appendChild(el(`<button class="day on" data-day=""><b>Today</b><small>live</small></button>`));
+    (r.days || []).filter(d => d.day !== today).slice(0, 30).forEach(d => {
+      const dt = new Date(d.day + "T12:00");
+      box.appendChild(el(`<button class="day" data-day="${d.day}">${dt.toLocaleDateString([], {weekday: "short", day: "numeric", month: "short"})}<small>${esc(d.digest || d.lines + " lines")}</small></button>`));
+    });
+    box.querySelectorAll(".day").forEach(b => b.onclick = () => b.dataset.day ? openDay(b.dataset.day, b) : leaveDay(true));
+  } catch (e) {}
+}
+async function openDay(day, btn) {
+  const r = await call("/history?day=" + day);
+  $$("#days .day").forEach(b => b.classList.toggle("on", b === btn));
+  $("#dayview") && $("#dayview").remove();
+  const dt = new Date(day + "T12:00");
+  const v = el(`<div class="dayview" id="dayview"><div class="back"><button class="btn soft">← Back to today</button></div>
+    <div class="stamp">${dt.toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"})}</div>
+    ${r.digest ? `<div class="digest">${SPARK}<div style="margin-top:6px">${esc(r.digest)}</div></div>` : ""}
+    ${(r.lines || []).map(l => `<div class="hline ${l.who === "He" ? "he" : ""}"><time>${l.t}</time><b>${esc(l.who)}</b><span>${rich(l.text)}</span></div>`).join("") || "<div class='stamp'>Nothing was said that day.</div>"}</div>`);
+  v.querySelector(".back button").onclick = () => leaveDay(true);
+  $$("#chatInner > *:not(#jump)").forEach(n => n.style.display = "none");
+  inner.insertBefore(v, $("#jump")); feed.scrollTop = 0; show("chat");
+}
+function leaveDay(select) {
+  $("#dayview") && $("#dayview").remove();
+  $$("#chatInner > *").forEach(n => n.style.display = "");
+  if (select) { $$("#days .day").forEach(b => b.classList.toggle("on", !b.dataset.day)); scrollDown(); }
+}
+
+/* ---------------------------------------------------------------- modal */
+function openModal(html) { $("#modal").innerHTML = html; $("#modalBg").classList.add("show"); const f = $("#modal input, #modal textarea"); f && f.focus(); }
+function closeModal() { $("#modalBg").classList.remove("show"); }
+$("#modalBg").addEventListener("click", e => { if (e.target === $("#modalBg")) closeModal(); });
+
+/* ---------------------------------------------------------------- routines */
+const REPEATS = ["once", "daily", "weekdays", "weekly", "every 30 minutes", "every hour", "every 2 hours", "every 3 hours"];
+function repeatSelect(v) { const vals = REPEATS.includes(v) ? REPEATS : [v, ...REPEATS]; return `<select name="repeat">${vals.map(o => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`; }
+// his changes wait here until he presses Save; then the laptop applies them all and Friday confirms she's noted them
+const remStage = {changes: {}, deletes: new Set(), adds: []};
+let remCache = null;
+const remCount = () => Object.keys(remStage.changes).length + remStage.deletes.size + remStage.adds.length;
+function stageRem(id, fields) { remStage.changes[id] = Object.assign(remStage.changes[id] || {}, fields); renderRoutines(); }
+async function saveRoutines() {
+  if (!remCount()) return true;
+  const btn = $("#remSave"); if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  const changes = Object.entries(remStage.changes).filter(([id]) => !remStage.deletes.has(id)).map(([id, f]) => Object.assign({id}, f));
+  let res; try { res = await call("/reminders/batch", {changes, deletes: [...remStage.deletes], adds: remStage.adds}); } catch (e) { res = null; }
+  if (!res || res.saved === undefined) { toast("Couldn't save. Your changes are still here."); renderRoutines(); return false; }
+  remStage.changes = {}; remStage.deletes.clear(); remStage.adds = [];
+  toast("Friday: " + (res.reply || "Noted.")); remCache = null;
+  if (page === "routines") loadRoutines();
+  return true;
+}
+// leaving the page with unsaved changes: ask (Save and tell Friday / Discard / Keep editing)
+function confirmLeave(go) {
+  if (page !== "routines" || !remCount()) return go();
+  openModal(`<h3>Save your changes?</h3><p style="color:var(--muted);margin:6px 0 14px">You changed ${remCount()} reminder${remCount() > 1 ? "s" : ""}. Save them and tell Friday, so she knows?</p>
+    <div class="btns"><button class="btn" id="lvKeep">Keep editing</button><div class="grow"></div><button class="btn danger" id="lvDiscard">Discard</button><button class="btn primary" id="lvSave">Save and tell Friday</button></div>`);
+  $("#lvKeep").onclick = closeModal;
+  $("#lvDiscard").onclick = () => { remStage.changes = {}; remStage.deletes.clear(); remStage.adds = []; closeModal(); go(); };
+  $("#lvSave").onclick = async () => { closeModal(); if (await saveRoutines()) go(); };
+}
+window.addEventListener("beforeunload", e => { if (remCount()) { e.preventDefault(); e.returnValue = ""; } });
+async function loadRoutines() {
+  const body = $("#routinesBody"); if (!remCache) body.innerHTML = "<div class='stamp'>Loading…</div>";
+  const [rt, rm, st] = await Promise.all([call("/routines"), call("/reminders"), call("/status")]);
+  remCache = {sections: rt.sections || rt || [], pending: rm.reminders || rm || [], st};
+  renderRoutines();
+}
+function renderRoutines() {
+  if (!remCache) return;
+  const body = $("#routinesBody");
+  const view = r => remStage.changes[r.id] ? Object.assign({}, r, remStage.changes[r.id], {unsaved: true}) : r;
+  const live = r => !remStage.deletes.has(String(r.id));
+  const sections = remCache.sections.map(s => Object.assign({}, s, {routines: (s.routines || []).filter(live).map(view)}));
+  const pending = remCache.pending.filter(live).map(view), st = remCache.st;
+  let h = "";
+  if (st.next && st.next.length) h += `<div class="sec">Next up</div><div class="tiles">` + st.next.map(n => `<div class="tile"><h4>${esc(nice(n.when))}</h4><div class="v" style="font-size:16px">${esc(n.text)}</div><small>${esc(n.repeat || "once")}</small></div>`).join("") + "</div>";
+  h += `<div class="sec">Routines<div class="grow"></div><button class="btn soft" id="addRem">+ Add a reminder</button></div>`;
+  for (const s of sections) {
+    const items = s.routines || [];
+    if (!items.length) continue;
+    h += `<div class="sec" style="margin-top:10px">${esc(s.section)}</div><div class="panel">` + items.map(r => rowHtml(r, r.time, r.repeat !== "once" ? r.repeat : "", r.description)).join("") + "</div>";
+  }
+  const one = pending.filter(r => !r.name);
+  const adds = remStage.adds.map((a, i) => `<div class="item"><div class="t"><b>${esc(a.text)}</b><span>${esc([a.time, a.repeat].filter(Boolean).join(" · "))} · new, not saved yet</span></div></div>`).join("");
+  h += `<div class="sec">Reminders</div><div class="panel"><div class="note">One-offs and alarms, set by voice or here. Off keeps one without it firing.</div>` +
+    (one.length || adds ? one.map(r => rowHtml(r, r.when ? nice(r.when) : (r.trigger || ""), r.repeat || "", r.kind === "alarm" ? "alarm" : "")).join("") + adds : "<div class='item'><div class='t'><small>Nothing pending.</small></div></div>") + "</div>";
+  const n = remCount();
+  h += `<div class="btns" style="margin:18px 0 8px"><div class="grow"></div><button class="btn ${n ? "primary" : "soft"}" id="remSave" ${n ? "" : "disabled"}>${n ? `Save ${n} change${n > 1 ? "s" : ""} and tell Friday` : "No changes to save"}</button></div>`;
+  body.innerHTML = h;
+  body.querySelectorAll(".item[data-id]").forEach(it => {
+    const id = it.dataset.id, r = JSON.parse(it.dataset.r);
+    // a switch is a change like any other: kept until Save (flipping it back undoes it)
+    it.querySelector(".tg").onclick = ev => {
+      ev.stopPropagation(); const on = !it.querySelector(".tg").classList.contains("on");
+      const c = remStage.changes[id] || {};
+      if ("enabled" in c && Object.keys(c).length === 1) { delete remStage.changes[id]; renderRoutines(); } else stageRem(id, {enabled: on});
+    };
+    it.querySelector(".t").onclick = () => editReminder(r);
+  });
+  $("#addRem").onclick = () => editReminder(null);
+  $("#remSave").onclick = saveRoutines;
+}
+function rowHtml(r, time, repeat, desc) {
+  const paused = r.paused_until && new Date(r.paused_until) > new Date() ? "paused till " + new Date(r.paused_until).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}) : "";
+  const sub = [time, repeat, r.runs_on === "phone" ? "on the phone" : "", paused, r.unsaved ? "changed, not saved yet" : ""].filter(Boolean).join(" · ");
+  const note = r.remark ? `<small>📝 ${esc(r.remark)}</small>` : "";
+  return `<div class="item" data-id="${r.id}" data-r='${esc(JSON.stringify(r)).replace(/'/g, "&#39;")}'><div class="t"><b>${esc(r.text)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}${desc ? `<small>${esc(desc)}</small>` : ""}${note}</div><span class="tg ${r.enabled !== false ? "on" : ""}"></span></div>`;
+}
+function editReminder(r) {
+  // nothing is fixed: every reminder and routine has the same editor (namaz: the time becomes a shift from the timetable)
+  const namaz = r && r.prayer;
+  let hh = 9, mm = 0; if (r && r.when) { const d = new Date(r.when); hh = d.getHours(); mm = d.getMinutes(); }
+  const t = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+  const every = rp => /every|hourly/.test(rp || "");
+  const isPaused = r && r.paused_until && new Date(r.paused_until) > new Date();
+  openModal(`<h3>${r ? (r.name ? "Edit routine" : "Edit reminder") : "New reminder"}</h3>
+    <label>What<input name="text" value="${esc(r ? r.text : "")}" placeholder="Drink some water"></label>
+    <div class="row2"><label>${r && r.name === "brief" ? "Not before" : every(r && r.repeat) ? "Starts each day at" : "Time"}<input name="time" type="time" value="${t}"></label><label>Repeat${repeatSelect(r ? (r.repeat && r.repeat !== "null" ? r.repeat : "once") : "once")}</label></div>
+    ${namaz ? `<small style='color:var(--muted)'>Mumbai's timetable says ${esc(r.timetable || "")}; a time you set here becomes a shift from it (${r.offset_min ? (r.offset_min > 0 ? "+" : "") + r.offset_min + " min now" : "none now"}).</small>` : ""}
+    <label id="mWinRow" style="${every(r && r.repeat) ? "" : "display:none"}">Only between (for "every …")<input name="window" value="${esc((r && r.window) || "")}" placeholder="08:00-23:00"></label>
+    <label>Description<input name="description" value="${esc((r && r.description) || "")}" placeholder="What it's for"></label>
+    <label>Remark for Friday<textarea name="remark" rows="2" placeholder="How she should handle it, e.g. “only on office days”, “gently, no alarm”, “skip it if I'm on a call”">${esc((r && r.remark) || "")}</textarea></label>
+    ${r ? `<div class="row2"><label>Pause it for<select name="pause"><option value="">${isPaused ? "keep paused" : "don't pause"}</option><option value="1">1 hour</option><option value="3">3 hours</option><option value="8">8 hours</option><option value="24">a day</option>${isPaused ? '<option value="0">resume now</option>' : ""}</select></label><div></div></div>` : ""}
+    <div class="btns">${r ? '<button class="btn danger" id="mDel">Delete</button>' : ""}<div class="grow"></div><button class="btn" id="mCancel">Cancel</button><button class="btn primary" id="mSave">Save</button></div>`);
+  $("#mCancel").onclick = closeModal;
+  $("#modal [name=repeat]").onchange = e => { $("#mWinRow").style.display = every(e.target.value) ? "" : "none"; };
+  $("#mSave").onclick = async () => {
+    const v = n => { const el = $(`#modal [name=${n}]`); return el ? el.value.trim() : ""; };
+    const f = {text: v("text"), repeat: $("#modal [name=repeat]").value, time: v("time"), window: v("window"), description: v("description"), remark: v("remark")};
+    if (!f.text) return;
+    if (r) {
+      if (f.time === t) delete f.time; if (f.text === r.text) delete f.text; if (f.repeat === (r.repeat || "once")) delete f.repeat;
+      for (const k of ["window", "description", "remark"]) if (f[k] === (r[k] || "")) delete f[k];
+      if (v("pause") !== "") f.pause_hours = parseFloat(v("pause"));
+      if (!Object.keys(f).length) return closeModal();
+      closeModal(); stageRem(String(r.id), f); toast("Changed. Press Save when you're done.");
+    } else { for (const k of ["window", "description", "remark"]) if (!f[k]) delete f[k]; remStage.adds.push(f); closeModal(); renderRoutines(); toast("Added. Press Save when you're done."); }
+  };
+
+  if (r) $("#mDel").onclick = () => { remStage.deletes.add(String(r.id)); delete remStage.changes[r.id]; closeModal(); renderRoutines(); toast("Deleted. Press Save when you're done."); };
+}
+
+/* ---------------------------------------------------------------- memory */
+async function loadMemory() {
+  const body = $("#memoryBody"); body.innerHTML = "<div class='stamp'>Loading…</div>";
+  const m = await call("/memory/all");
+  body.innerHTML = `
+    <div class="sec">Things she remembers<div class="grow"></div><button class="btn soft" id="addFact">+ Remember something</button></div>
+    <div class="panel" id="facts">${(m.facts || []).map(f => `<div class="item"><div class="t" style="cursor:default"><b style="font-weight:400;font-size:14.5px">${rich(f)}</b></div><button class="x" title="Forget" data-f="${esc(f)}">×</button></div>`).join("") || "<div class='item'><div class='t'><small>Nothing saved yet. Tell her \"remember that…\".</small></div></div>"}</div>
+    <div class="cols" style="margin-top:16px">
+      <div>
+        <div class="sec">What you taught her<div class="grow"></div><button class="btn soft" id="addKnow">+ New</button></div>
+        <div class="panel" id="know">${(m.knowledge || []).map(k => `<div class="item"><div class="t" data-k="${esc(k.name)}"><b>${esc(k.name.replace(/\.md$/, "").replace(/_/g, " "))}</b><small>${Math.round(k.size / 1024)} KB</small></div></div>`).join("") || "<div class='item'><div class='t'><small>Nothing yet.</small></div></div>"}</div>
+        <div class="sec">Notes</div>
+        <div class="panel" id="notes">${(m.notes || []).slice(0, 30).map(n => `<div class="item"><div class="t" data-n="${esc(n)}"><b style="font-weight:400;font-size:14px">${esc(n.replace(/\.md$/, ""))}</b></div></div>`).join("") || "<div class='item'><div class='t'><small>No notes yet. Say \"take a note\".</small></div></div>"}</div>
+        <div class="sec">Open feedback about her</div>
+        <div class="panel">${(m.feedback || []).map(f => `<div class="item"><div class="t" style="cursor:default"><b style="font-weight:400;font-size:14px">${esc(f)}</b></div></div>`).join("") || "<div class='item'><div class='t'><small>Nothing open.</small></div></div>"}</div>
+      </div>
+      <div class="editor" id="editor"><div class="head"><b>Pick a file on the left</b></div><small style="color:var(--muted)">Knowledge files are part of her prompt on the laptop and the phone. Edit here, save, and she reads it at her next start.</small></div>
+    </div>`;
+  $("#addFact").onclick = () => { openModal(`<h3>Remember</h3><label>Fact<input name="f" placeholder="Sara's birthday is 9 June"></label><div class="btns"><button class="btn" id="mCancel">Cancel</button><button class="btn primary" id="mSave">Save</button></div>`);
+    $("#mCancel").onclick = closeModal; $("#mSave").onclick = async () => { const t = $("#modal [name=f]").value.trim(); if (!t) return; await call("/memory", {kind: "fact", text: t}); closeModal(); toast("Remembered."); loadMemory(); }; };
+  $$("#facts .x").forEach(b => b.onclick = async () => { if (!confirm("Forget this?\n\n" + b.dataset.f)) return; await call("/memory", {kind: "forget", text: b.dataset.f}); toast("Forgotten."); loadMemory(); });
+  $$("#know .t").forEach(t => t.onclick = () => openEditor("knowledge", t.dataset.k));
+  $$("#notes .t").forEach(t => t.onclick = () => openEditor("note", t.dataset.n));
+  $("#addKnow").onclick = () => { openModal(`<h3>New knowledge file</h3><label>Name<input name="n" placeholder="miqaat_departments"></label><div class="btns"><button class="btn" id="mCancel">Cancel</button><button class="btn primary" id="mSave">Create</button></div>`);
+    $("#mCancel").onclick = closeModal; $("#mSave").onclick = () => { const n = $("#modal [name=n]").value.trim(); if (!n) return; closeModal(); showEditor(n.endsWith(".md") ? n : n + ".md", "# " + n.replace(/_/g, " ") + "\n\n", true); }; };
+}
+async function openEditor(kind, name) { const r = await call(`/${kind}?name=${encodeURIComponent(name)}`); showEditor(r.name || name, r.text || "", kind === "knowledge"); }
+function showEditor(name, text, editable) {
+  const ed = $("#editor");
+  ed.innerHTML = `<div class="head"><b>${esc(name)}</b>${editable ? '<button class="btn primary" id="edSave">Save</button>' : ""}</div><textarea id="edText" ${editable ? "" : "readonly"}></textarea>`;
+  $("#edText").value = text;
+  if (editable) $("#edSave").onclick = async () => { const r = await call("/knowledge", {name, text: $("#edText").value}); toast("Saved. She'll read it at her next start."); showRestart(); loadMemory().then(() => openEditor("knowledge", r.name || name)); };
+}
+
+/* ---------------------------------------------------------------- status */
+let statusTimer = null;
+function dot(ok, warn) { return `<i class="${ok ? "ok" : warn ? "warn" : "bad"}"></i>`; }
+function since(s) { return s == null ? "never" : s < 60 ? s + " s ago" : s < 3600 ? Math.round(s / 60) + " min ago" : Math.round(s / 3600) + " h ago"; }
+function applyStatus(s) {
+  $("#phoneChip").innerHTML = s.phone && s.phone.seen != null && s.phone.seen < 120 ? `<i class="on"></i><span>Phone linked${s.phone.playing ? " · playing" : ""}</span>` : `<i></i><span>Phone away</span>`;
+  $("#lsdChip").style.display = s.language === "lsd" ? "" : "none";
+  $("#tgOn").classList.toggle("on", !s.paused); $("#tgVoice").classList.toggle("on", !!s.voice);
+  $("#tgOffice").classList.toggle("on", !!(s.office && s.office.on));
+  $("#working").innerHTML = (s.agents || []).map(a => `<span class="pill" title="${esc(a.title)}: ${esc(a.step)}">${SPARK.replace('class="spark"', 'class="spark spin" style="width:14px;height:14px;margin:0"')}<span class="t">${esc(a.title)}</span><small>${esc(a.step)}</small></span>`).join("");
+}
+async function loadStatusQuiet() { try { applyStatus(await call("/status")); } catch (e) {} }
+async function loadStatus() {
+  clearTimeout(statusTimer);
+  let s; try { s = await call("/status"); } catch (e) { $("#statusBody").innerHTML = "<div class='stamp'>Friday isn't reachable.</div>"; return; }
+  applyStatus(s);
+  const phoneOn = s.phone.seen != null && s.phone.seen < 120;
+  $("#statusBody").innerHTML = `
+    <div class="tiles">
+      <div class="tile"><h4>Friday</h4><div class="v">${dot(!s.paused, s.paused)}${s.paused ? "Off" : STATES[s.state] || s.state}</div><small>${s.paused ? "Ctrl+Alt+J turns her back on. Reminders still ring." : s.busy ? "In a conversation" : "Listening for her name"}</small></div>
+      <div class="tile"><h4>Brain</h4><div class="v">${dot(s.brain.alive && !s.brain.blocked_until, !!s.brain.blocked_until)}Claude ${esc(s.brain.model)}</div><small>${s.brain.blocked_until ? "Plan used up till " + esc(s.brain.blocked_until) + " · backup brain answers" : s.brain.alive ? s.brain.turns + " turns in this conversation" : "Starting…"}</small></div>
+      <div class="tile"><h4>Hearing</h4><div class="v">${dot(true)}Whisper ${esc(s.hearing.model)}</div><small>${esc(s.hearing.engine)} on the ${esc(s.hearing.device)} · ${esc(s.hearing.mode).replace(/_/g, " ")}${s.language === "lsd" ? " · Lisan ud-Dawat ear: Gemini" : ""}</small></div>
+      <div class="tile"><h4>Voice</h4><div class="v">${dot(true)}${esc(s.voice_name)}</div><small>${esc(s.voice_engine)} · replies ${s.voice ? "spoken" : "on screen only"} in this window</small></div>
+      <div class="tile"><h4>Phone</h4><div class="v">${dot(phoneOn, s.phone.seen != null)}${phoneOn ? "Linked" : "Away"}</div><small>${s.phone.seen != null ? "last seen " + since(s.phone.seen) : "never seen"}${s.phone.playing ? " · playing " + esc(s.phone.playing) : ""}${s.phone.url ? "<br>tunnel " + esc(s.phone.url.replace(/^https?:\/\//, "")) : ""}</small></div>
+      <div class="tile"><h4>Language</h4><div class="v">${dot(true)}${s.language === "lsd" ? "Lisan ud-Dawat" : "English"}</div><small>${s.language === "lsd" ? "Say \"back to English\" or use /english" : "Say \"talk to me in LSD\" or use /lsd"}</small></div>
+      <div class="tile wide"><h4>Background jobs</h4>${(s.agents || []).length ? s.agents.map(a => `<div class="item"><div class="t" style="cursor:default"><b>${esc(a.title)}</b><small>${esc(a.step)} · ${since(a.since)}</small></div>${SPARK.replace('class="spark"', 'class="spark spin"')}</div>`).join("") : "<small>None running. Ask for one in the chat, or type /job.</small>"}</div>
+      <div class="tile wide"><h4>Next reminders</h4>${(s.next || []).length ? s.next.map(n => `<div class="item"><div class="t" style="cursor:default"><b style="font-weight:400">${esc(n.text)}</b><small>${esc(nice(n.when))} · ${esc(n.repeat || "once")}</small></div></div>`).join("") : "<small>Nothing scheduled.</small>"}<small style="margin-top:6px">Quiet hours ${esc((s.quiet_hours || []).join(" to "))}: she doesn't read messages out then.</small></div>
+      <div class="tile wide"><h4>Laptop</h4>${deviceTiles(s.devices)}</div>
+      <div class="tile wide"><h4>Phone</h4><small>${esc((s.devices && s.devices.phone || "phone: not linked").replace(/^phone: /, ""))}</small></div>
+      <div class="tile wide"><h4>Last start-up check</h4><small>${esc(s.health || "no health line in the log yet")}</small><small>${esc(s.contacts)} contacts known · it's ${esc(s.now.replace("T", " "))} on the laptop</small></div>
+    </div>
+    <div class="btns" style="margin-top:14px"><button class="btn soft" id="stRestart">Restart Friday</button><button class="btn soft" id="stNew">New chat</button></div>`;
+  $("#stRestart").onclick = () => restartFriday();
+  $("#stNew").onclick = newChat;
+  statusTimer = setTimeout(() => { if (page === "status") loadStatus(); }, 5000);
+}
+function deviceTiles(d) {
+  const x = d && d.laptop_data || {};
+  if (!x.t) return `<small>${esc(d && d.laptop || "reading…")}</small>`;
+  const bat = x.battery == null ? "—" : x.battery + "%";
+  const batSub = {1: "on battery", 2: "plugged in", 3: "full", 4: "low", 5: "critical"}[x.status] || (x.status >= 6 ? "charging" : "");
+  const net = x.ssid ? x.ssid : x.eth ? "Wired" : "No network";
+  const netSub = (x.ssid ? (x.signal >= 70 ? "strong signal" : x.signal < 40 ? "weak signal" : "ok signal") + " · " : "") + (x.internet ? "internet ok" : "NO INTERNET") + (x.vpn ? " · VPN " + x.vpn : "");
+  const disks = (x.disks || []).filter(k => k.d === "C:" || k.d === "D:").map(k => `${k.d} ${k.free} GB free`).join(" · ");
+  const mini = (label, v, sub, warn) => `<div class="mini"><small>${label}</small><b class="${warn ? "warn" : ""}">${esc(String(v))}</b><small>${esc(sub || "")}</small></div>`;
+  return `<div class="minis">
+    ${mini("Battery", bat, batSub, x.battery != null && x.battery < 20 && x.status === 1)}
+    ${mini("Network", net, netSub, !x.internet)}
+    ${mini("CPU", (x.cpu ?? "—") + "%", "", x.cpu > 85)}
+    ${mini("Memory", x.ram_total ? `${x.ram_used} / ${x.ram_total} GB` : "—", "", x.ram_total && x.ram_used / x.ram_total > 0.9)}
+    ${mini("Disk", disks || "—", "", (x.disks || []).some(k => k.d === "C:" && k.free < 10))}
+    ${mini("Screen", (x.brightness ?? "—") + "%", x.dark ? "dark mode" : "light mode")}
+    ${mini("Sound", (x.volume ?? "—") + "%", x.muted ? "muted" : "")}
+    ${mini("Windows", x.errors ? x.errors + " errors in 24 h" : "no errors in 24 h", x.pending_reboot ? "restart pending" : "", !!x.errors)}
+  </div>${x.last_error ? `<small style="margin-top:6px">Latest: ${esc(x.last_error)}</small>` : ""}`;
+}
+async function restartFriday() {
+  if (!confirm("Restart Friday now? She's back in about 20 seconds.")) return;
+  restarting(); try { await call("/restart", {}); } catch (e) {}
+}
+/* a restart (from here, by voice, the watchdog or an update): "Restarting…" until the new run answers, then the
+   restart banner goes (the new settings are in) and her feed starts over from the new run's first line */
+let boot = null, restartT = null, downSince = 0;
+function restarting() {
+  if (restartT) return;
+  state("restarting"); toast("Restarting Friday…");
+  restartT = setTimeout(() => { if (restartT) $("#stateText").textContent = "Restarting… taking longer than usual"; }, 90000);
+}
+/* today's conversation from before this run started (a restart used to wipe the chat): shown above the live lines */
+async function earlierToday(bootAt) {
+  try {
+    const d = new Date(), day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const r = await call(`/history?day=${day}&before=${bootAt}`);
+    const lines = (r.lines || []).filter(l => ["He", "Friday", "Jarvis"].includes(l.who)).slice(-200);
+    if (!lines.length) return;
+    const box = el(`<div class="earlier"></div>`);
+    lines.forEach(l => box.appendChild(el(`<div class="hline ${l.who === "He" ? "he" : ""}"><time>${l.t}</time><b>${l.who === "He" ? "You" : "Friday"}</b><span>${rich(l.text)}</span></div>`)));
+    box.appendChild(el(`<div class="stamp">Earlier today, before her last restart</div>`));
+    inner.insertBefore(box, inner.firstChild);
+    if (atBottom()) scrollDown();
+  } catch (e) {}
+}
+function restarted() {
+  clearTimeout(restartT); restartT = null; downSince = 0;
+  const b = $("#restartBanner"); if (b) b.classList.remove("show");
+  state("idle"); toast("Friday's back.");
+  if (typeof loadStatusQuiet === "function") loadStatusQuiet();
+}
+function showRestart() { const b = $("#restartBanner"); if (b) b.classList.add("show"); }
+
+/* ---------------------------------------------------------------- settings */
+const LISTEN = [["name_anywhere", "Her name anywhere in a sentence"], ["name_start", "Her name at the start"], ["always", "Always listening, no name needed"]];
+async function loadSettings() {
+  const r = await call("/settings"), s = r.settings || {};
+  const sel = (name, opts, v) => `<select name="${name}">${opts.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${val === v ? "selected" : ""}>${esc(lab)}</option>`; }).join("")}</select>`;
+  const tg = (name, label, hint, v) => `<div class="tgrow" data-tg="${name}"><div>${label}<small>${hint}</small></div><span class="tg ${v ? "on" : ""}"></span></div>`;
+  const inp = (name, label, v, ph = "") => `<label>${label}<input name="${name}" value="${esc(v ?? "")}" placeholder="${esc(ph)}"></label>`;
+  $("#settingsBody").innerHTML = `
+    <div class="banner" id="restartBanner"><span>Some of these take effect when Friday restarts.</span><div class="grow"></div><button class="btn primary" id="sbRestart">Restart now</button></div>
+    <div class="sec">Connectors</div><div class="panel" id="gConn"><small style="color:var(--muted)">Loading…</small></div>
+    <div class="sec">Names and keys</div><div class="panel"><div class="form">
+      ${inp("assistant_name", "Her name", s.assistant_name)}${inp("user_name", "Your name", s.user_name)}
+      ${inp("hotkey", "Listen now", s.hotkey, "ctrl+alt+k")}${inp("pause_hotkey", "Friday off / on", s.pause_hotkey, "ctrl+alt+j")}${inp("window_hotkey", "Open this window", s.window_hotkey || "ctrl+alt+f")}
+    </div></div>
+    <div class="sec">Hearing</div><div class="panel"><div class="form">
+      <label class="full">When she listens${sel("listen_mode", LISTEN, s.listen_mode)}</label>
+      <div class="full">${tg("barge_in", "You can cut in while she speaks", "She stops mid-sentence when you talk over her", s.barge_in)}
+      ${tg("confirm_risky_commands", "Ask before anything risky", "Sending, deleting, paying: a yes first", s.confirm_risky_commands)}</div>
+    </div></div>
+    <div class="sec">Voice</div><div class="panel"><div class="form">
+      <label>Engine${sel("voice_engine", [["kokoro", "Kokoro (on the laptop, free)"], ["edge", "Microsoft online voice"]], s.voice_engine)}</label>
+      <label>Kokoro voice${sel("kokoro_voice", r.voices.kokoro, s.kokoro_voice)}</label>
+      <label>Speed<input name="kokoro_speed" type="number" step="0.05" min="0.7" max="1.8" value="${esc(s.kokoro_speed)}"></label>
+      ${inp("edge_voice", "Online voice", s.edge_voice, "en-US-AvaMultilingualNeural")}
+      <div class="full">${tg("panel_voice", "Speak replies in this window", "Off = typed questions are answered on screen only", s.panel_voice !== false)}</div>
+    </div></div>
+    <div class="sec">Brain</div><div class="panel"><div class="form">
+      <label>Conversation${sel("brain_model", [["haiku", "Claude Haiku (fastest)"], ["sonnet", "Claude Sonnet (smarter)"], ["opus", "Claude Opus (smartest, slow)"]], s.brain_model)}</label>
+      <label>Web answers${sel("web_model", [["haiku", "Claude Haiku"], ["sonnet", "Claude Sonnet"]], s.web_model)}</label>
+      <small class="full" style="color:var(--muted)">A new model is used from the next chat. Background jobs use Claude Code's own default.</small>
+    </div></div>
+    <div class="sec">Messages</div><div class="panel"><div class="form">
+      <div class="full">${tg("announce_messages", "Read new messages out", "WhatsApp and the apps below, when you're at the laptop", s.announce_messages)}
+      ${tg("announce_groups", "Groups too", "Off = only direct messages", s.announce_groups)}
+      ${tg("reply_suggestions", "Reply suggestions", "Three replies the way you write, under each new WhatsApp message (even while she's off)", s.reply_suggestions !== false)}
+      ${tg("reply_suggest_groups", "Suggestions for groups too", "Off = only direct chats", s.reply_suggest_groups)}</div>
+      <label class="full">Apps she reads out (comma separated)<input name="announce_apps" value="${esc((s.announce_apps || []).join(", "))}"></label>
+      <label>Quiet from<input name="quiet_from" type="time" value="${esc((s.quiet_hours || [])[0] || "")}"></label><label>Quiet until<input name="quiet_to" type="time" value="${esc((s.quiet_hours || [])[1] || "")}"></label>
+    </div></div>
+    <div class="sec">Office mode</div><div class="panel"><div class="form">
+      <div class="full tgrow" id="officeRow" style="font-weight:600"><div>Office mode<small>No sound on either device. Also: the sidebar, the tray, “office mode on/off”, or the phone.</small></div><span class="tg ${r.office && r.office.on ? "on" : ""}"></span></div>
+      <div class="full" id="officeOpts" style="border-left:2px solid var(--line, #8883);margin:2px 0 4px 6px;padding:2px 0 2px 14px">
+        ${tg("office_earphones", "Speak into earphones", "With headphones or buds in, she still talks to you (only you hear her)", s.office_earphones !== false)}
+        ${tg("office_phone_reminders", "Reminders as phone notifications", "Off = a card on the laptop only", s.office_phone_reminders !== false)}
+        ${tg("office_cards", "Messages and heads-ups as cards", "Off = she says them (into earphones if you wear them, else on screen)", s.office_cards !== false)}
+        ${tg("office_strict_voice", "Only my voice wakes her", "Colleagues say “Friday” too", s.office_strict_voice !== false)}
+        <div style="margin-top:8px;font-size:13px;color:var(--muted)">Switch on by itself</div>
+        <label class="full">On these Wi-Fi networks (comma separated)<input name="office_wifi" value="${esc((s.office_wifi || []).join(", "))}" placeholder="e.g. Miqaat-Office"></label>
+        <div class="btns" style="margin:4px 0 8px"><button class="btn soft" id="officeWifiHere" type="button">Add the Wi-Fi I'm on now</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <label>In office hours: days<input name="office_days" value="${esc((s.office_hours || {}).days || "")}" placeholder="Mon-Sat (empty = off)"></label>
+          <label>From<input name="office_from" type="time" value="${esc((s.office_hours || {}).from || "")}"></label><label>Until<input name="office_to" type="time" value="${esc((s.office_hours || {}).to || "")}"></label>
+        </div>
+      </div>
+    </div></div>
+    <div class="sec">Lisan ud-Dawat</div><div class="panel"><div class="form">
+      <div class="full">${tg("language", "Talk in Lisan ud-Dawat now", "Switches live, both ways", r.language === "lsd")}</div>
+      <label>Her ear in LSD${sel("lsd_ear", [["gemini", "Gemini (right words, ~2 s)"], ["groq", "Groq Whisper (0.6 s, rougher)"]], s.lsd_ear)}</label>
+      ${inp("edge_voice_lsd", "Her LSD voice", s.edge_voice_lsd)}
+    </div></div>
+    <div class="btns" style="margin:16px 0"><button class="btn primary" id="saveSettings">Save settings</button><button class="btn soft" id="sbRestart2">Restart Friday</button></div>`;
+  accordion($("#settingsBody"), "settingsOpen");
+  loadGoogle();
+  const restartKeys = new Set(r.restart_keys || []);
+  $$("#settingsBody .tgrow").forEach(t => t.onclick = () => t.querySelector(".tg").classList.toggle("on"));
+  // office mode switches live (not with Save); its options sit inside it
+  $("#officeRow").onclick = async () => { await setOffice(!$("#officeRow .tg").classList.contains("on")); $("#officeRow .tg").classList.toggle("on", $("#tgOffice").classList.contains("on")); };
+  $("#officeWifiHere").onclick = async () => { const res = await call("/office", {remember_wifi: true}); if (res.wifi) { $("[name=office_wifi]").value = res.wifi.join(", "); toast(res.added ? `Added ${res.added}.` : "Not on Wi-Fi right now."); } };
+  $("#sbRestart").onclick = $("#sbRestart2").onclick = restartFriday;
+  $("#saveSettings").onclick = async () => {
+    const b = $("#settingsBody"), out = {};
+    b.querySelectorAll("input[name], select[name]").forEach(i => { if (["quiet_from", "quiet_to", "announce_apps", "office_wifi", "office_days", "office_from", "office_to"].includes(i.name)) return; out[i.name] = i.type === "number" ? parseFloat(i.value) : i.value.trim(); });
+    out.office_wifi = b.querySelector("[name=office_wifi]").value.split(",").map(x => x.trim()).filter(Boolean);
+    const od = b.querySelector("[name=office_days]").value.trim(), of = b.querySelector("[name=office_from]").value, ot = b.querySelector("[name=office_to]").value;
+    out.office_hours = od && of && ot ? {days: od, from: of, to: ot} : null;
+    b.querySelectorAll(".tgrow[data-tg]").forEach(t => { out[t.dataset.tg] = t.querySelector(".tg").classList.contains("on"); });
+
+    out.language = out.language ? "lsd" : "en";
+    out.announce_apps = b.querySelector("[name=announce_apps]").value.split(",").map(x => x.trim()).filter(Boolean);
+    const qf = b.querySelector("[name=quiet_from]").value, qt = b.querySelector("[name=quiet_to]").value;
+    if (qf && qt) out.quiet_hours = [qf, qt];
+    const res = await call("/settings", out);
+    toast((res.changed || []).length ? "Saved." : "Nothing changed.");
+    if ((res.restart_needed || []).length) showRestart();
+    loadStatusQuiet();
+  };
+}
+
+const SEC_SUM = {"Connectors": "Gmail, Calendar and Drive sign-ins", "Names and keys": "Her name, yours, and the hotkeys",
+  "Hearing": "When she listens, cutting in, asking before risky things", "Voice": "Engine, voice and speed",
+  "Brain": "The Claude model she thinks with", "Messages": "Which messages she reads out, quiet hours",
+  "Office mode": "No sound at work: its options and when it switches on", "Lisan ud-Dawat": "Talking in LSD: her ear and her voice"};
+function accordion(root, key) {
+  let open = ""; try { open = localStorage.getItem(key) || ""; } catch (e) {}
+  [...root.children].forEach(sec => {
+    if (!sec.classList.contains("sec")) return;
+    const panel = sec.nextElementSibling; if (!panel || !panel.classList.contains("panel")) return;
+    const title = sec.textContent.trim();
+    const row = el(`<button class="acc" type="button"><div><b>${esc(title)}</b><small>${esc(SEC_SUM[title] || "")}</small></div><span class="chev">›</span></button>`);
+    sec.replaceWith(row);
+    const set = on => { row.classList.toggle("open", on); panel.style.display = on ? "" : "none"; };
+    set(title === open);
+    row.onclick = () => {
+      const on = !row.classList.contains("open");
+      root.querySelectorAll(".acc.open").forEach(o => { if (o !== row) { o.classList.remove("open"); o.nextElementSibling.style.display = "none"; } });
+      set(on); try { localStorage.setItem(key, on ? title : ""); } catch (e) {}
+      if (on) row.scrollIntoView({block: "nearest", behavior: "smooth"});
+    };
+  });
+}
+
+/* ---------------------------------------------------------------- connectors (her own Google sign-ins) */
+const G_ICON = {gmail: "✉️", calendar: "📅", drive: "📁"};
+let gPoll = null;
+async function loadGoogle() {
+  const box = $("#gConn"); if (!box) return;
+  let g; try { g = await call("/google"); } catch (e) { box.innerHTML = "<small>Friday isn't reachable.</small>"; return; }
+  const rows = g.services.map(s => `
+    <div class="tgrow" style="cursor:default;align-items:center">
+      <div><span style="margin-right:8px">${G_ICON[s.id] || ""}</span>${esc(s.name)}
+        <small>${s.signing_in ? "Waiting for you in the browser…" : s.connected ? "Connected as " + esc(s.account || "your account") + (s.error ? " · " + esc(s.error) : "")
+          : (s.error ? esc(s.error) + " · " : "") + "Not connected: she uses your Claude account's connector meanwhile"}</small></div>
+      <div class="btns" style="margin:0;gap:6px">
+        ${g.client ? `<button class="btn ${s.connected ? "soft" : "primary"}" data-gc="${s.id}">${s.connected ? "Switch account" : "Sign in with Google"}</button>` : ""}
+        ${s.connected ? `<button class="btn soft" data-gd="${s.id}">Disconnect</button>` : ""}
+      </div>
+    </div>`).join("");
+  const form = `
+    <div style="margin-top:10px"><b>One-time: Friday's own Google app</b>
+      <ol style="margin:6px 0 8px 18px;padding:0;color:var(--muted);font-size:13px;line-height:1.6">
+        <li><a href="https://console.cloud.google.com/projectcreate" target="_blank">Create a Google Cloud project</a> (call it Friday).</li>
+        <li>Switch on the <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank">Gmail API</a>,
+          <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank">Calendar API</a> and
+          <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank">Drive API</a>.</li>
+        <li><a href="https://console.cloud.google.com/auth/overview" target="_blank">Google Auth Platform</a>: get started, audience External, then <b>Publish app</b> (in Testing, Google signs her out every 7 days).</li>
+        <li><a href="https://console.cloud.google.com/auth/clients" target="_blank">Clients</a> → Create client → <b>Desktop app</b> → download the JSON and paste it here.</li>
+      </ol>
+      <textarea id="gJson" rows="3" style="width:100%;box-sizing:border-box;font:12px ui-monospace,monospace" placeholder='{"installed":{"client_id":"…apps.googleusercontent.com","client_secret":"…"}}'></textarea>
+      <div class="btns" style="margin:8px 0 0"><button class="btn primary" id="gSave">Save Google app</button></div>
+    </div>`;
+  const setup = g.client ? `<small style="color:var(--muted);display:block;margin-top:8px">Each one can be a different Google account. <a href="#" id="gReset">Change Google app</a></small>` : form;
+  box.innerHTML = rows + setup;
+  $$("#gConn [data-gc]").forEach(b => b.onclick = async () => {
+    const r = await call("/google/connect", {service: b.dataset.gc});
+    if (!r.ok) { toast(r.error || "Couldn't start the sign-in."); return; }
+    toast("Sign-in opened in your browser."); watchGoogle();
+  });
+  $$("#gConn [data-gd]").forEach(b => b.onclick = async () => {
+    if (!confirm("Disconnect this connector? Friday forgets the sign-in and Google revokes it.")) return;
+    await call("/google/disconnect", {service: b.dataset.gd}); loadGoogle();
+  });
+  const wireSave = () => { const save = $("#gSave"); if (save) save.onclick = async () => {
+    const r = await call("/google/client", {json: $("#gJson").value.trim()});
+    toast(r.ok ? "Google app saved. Now sign each one in." : (r.error || "That didn't look right.")); loadGoogle();
+  }; };
+  wireSave();
+  const reset = $("#gReset"); if (reset) reset.onclick = e => { e.preventDefault(); reset.parentElement.outerHTML = form; wireSave(); };
+  if (g.services.some(s => s.signing_in)) watchGoogle();
+}
+function watchGoogle() { clearTimeout(gPoll); gPoll = setTimeout(async () => { await loadGoogle(); }, 2500); }
+
+/* ---------------------------------------------------------------- command palette */
+
+const PAL = [
+  ["Pages", "Chat", () => show("chat"), "Ctrl 1"], ["Pages", "Routines", () => show("routines"), "Ctrl 2"], ["Pages", "Memory", () => show("memory"), "Ctrl 3"],
+  ["Pages", "Status", () => show("status"), "Ctrl 4"], ["Pages", "Settings", () => show("settings"), "Ctrl 5"],
+  ["Do", "New chat", newChat, "Ctrl N"], ["Do", "Listen now", () => call("/listen", {}), "Ctrl Alt K"], ["Do", "Stop", () => call("/stop", {}), ""],
+  ["Do", "Add a reminder", () => editReminder(null), ""], ["Do", "Talk in Lisan ud-Dawat", () => SLASH.find(s => s[0] === "/lsd")[3](), "/lsd"], ["Do", "Back to English", () => SLASH.find(s => s[0] === "/english")[3](), "/english"],
+  ["Do", "Theme: cycle", () => $("#themeBtn").click(), ""], ["Do", "Restart Friday", restartFriday, ""],
+  ["Do", "Office mode on", () => setOffice(true), ""], ["Do", "Office mode off", () => setOffice(false), ""],
+
+  ["Ask", "Brief me", () => ask("Give me a quick briefing: my calendar today, any new messages, and the weather."), ""],
+  ["Ask", "Read my new messages", () => ask("Read me my new messages."), ""], ["Ask", "What's on my screen", () => ask("What's on my screen?"), ""],
+  ["Ask", "What are you working on?", () => ask("What are you working on right now?"), ""],
+];
+let palIdx = 0;
+function openPal() { $("#palBg").classList.add("show"); $("#palIn").value = ""; palIdx = 0; renderPal(); $("#palIn").focus(); }
+function closePal() { $("#palBg").classList.remove("show"); }
+function palHits() { const q = $("#palIn").value.trim().toLowerCase(); const hits = PAL.filter(p => !q || p[1].toLowerCase().includes(q)); if (q && !hits.some(h => h[1].toLowerCase() === q)) hits.push(["Ask Friday", `“${$("#palIn").value.trim()}”`, () => ask($("#palIn").value.trim()), "Enter"]); return hits; }
+function renderPal() {
+  const hits = palHits(); palIdx = Math.min(palIdx, Math.max(0, hits.length - 1));
+  let h = "", grp = "";
+  hits.forEach((p, i) => { if (p[0] !== grp) { grp = p[0]; h += `<div class="grp">${grp}</div>`; } h += `<button class="${i === palIdx ? "on" : ""}" data-i="${i}">${esc(p[1])}<small>${esc(p[3])}</small></button>`; });
+  $("#palList").innerHTML = h;
+  $$("#palList button").forEach(b => b.onclick = () => { closePal(); hits[+b.dataset.i][2](); });
+}
+$("#palIn").addEventListener("input", () => { palIdx = 0; renderPal(); });
+$("#palIn").addEventListener("keydown", e => {
+  const hits = palHits();
+  if (e.key === "ArrowDown") { e.preventDefault(); palIdx = (palIdx + 1) % hits.length; renderPal(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); palIdx = (palIdx - 1 + hits.length) % hits.length; renderPal(); }
+  else if (e.key === "Enter") { e.preventDefault(); closePal(); hits[palIdx] && hits[palIdx][2](); }
+});
+$("#palBg").addEventListener("click", e => { if (e.target === $("#palBg")) closePal(); });
+$("#palBtn").onclick = openPal;
+
+/* ---------------------------------------------------------------- go */
+try { if (sessionStorage.getItem("justRestarted")) { sessionStorage.removeItem("justRestarted"); setTimeout(() => toast("Friday's back."), 600); } } catch (e) {}
+let startPage = "chat"; try { startPage = localStorage.getItem("page") || "chat"; } catch (e) {}
+show(startPage); refresh(); poll(); loadDays(); loadStatusQuiet();
+setInterval(loadStatusQuiet, 20000); setInterval(loadDays, 300000);
+</script>
+</body>
+</html>

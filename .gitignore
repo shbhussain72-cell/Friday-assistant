@@ -1,0 +1,9 @@
+.venv/
+models/
+data/
+runs/
+__pycache__/
+*.log
+*.log.*
+bin/
+.playwright-mcp/
